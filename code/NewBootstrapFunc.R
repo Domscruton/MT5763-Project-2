@@ -7,6 +7,7 @@
 ####  "replace" is the option for sampling;
 ####  This function returns to the coefficient of the linear model so far;
 ####  I can change this function whatever you guys want or we need later;
+
 NewBoots_coef <- function(nboots,inputData,covars,replace = T){
   ##import the necessary packages
   library(profvis)
@@ -24,13 +25,15 @@ NewBoots_coef <- function(nboots,inputData,covars,replace = T){
     bootData <- inputData[sample(1:dataDim,dataDim,replace = replace),]
     
     ##  Set the linear model
-    bootLM <- lm(covars, data = bootData)
+    bootLM <- lm(Age~covars, data = bootData)
     
     ##  Store the coefs
     coef(bootLM)
   }
   
-  ##### Paralleling ---------------------------------------------------------
+
+# Parallelisation ---------------------------------------------------------
+
   ##Set default Cluster parameter
   ncores <- detectCores()
   myCluster <- makeCluster(ncores - 1,type = 'PSOCK')
@@ -55,6 +58,9 @@ NewBoots_coef <- function(nboots,inputData,covars,replace = T){
 }
 
 
+NewBoots_coef(10,fitness,fitness$Weight)
+
+
 
 # Testing -----------------------------------------------------------------
 
@@ -71,3 +77,35 @@ object.size(randomdf)/1024^2
 
 test1 <- NewBoots_coef(100,randomdf,y~x) ## Let's use a small looping times first
 test2 <- NewBoots_coef(100,randomdf,z~x)
+
+
+# Profile New Bootstrap Function ------------------------------------------
+
+#Create a data frame of random values from the uniform distribution
+set.seed(4563)  
+x <- runif(1e6/2)
+y <- runif(1e6/2)
+randomDataFrame <- data.frame(x, y)
+
+#Estimate of the memory being used to store randomDataFrame
+object.size(randomDataFrame)/1024^2
+
+#Return CPU times that NewBoots_coef used
+system.time(test <- NewBoots_coef(10,randomDataFrame,y~x, replace=T))
+
+#Profile the execution of NewBoots_coef
+Rprof("storageFile")
+NewBoots_coef(10,randomDataFrame,y~x, replace=T)
+Rprof()
+
+#Summarise the output of the Rprof function 
+summaryRprof("storageFile")
+
+#Summarise the run time by running the expression 10 times
+library(microbenchmark)
+microbenchmark( NewBoots_coef(10,randomDataFrame,y~x, replace=T), times=10)
+
+#Use R-studio profiler
+library(profvis)
+NewBoots_coef(100,randomDataFrame,y~x, replace=T)
+profvis(NewBoots_coef(10,randomDataFrame,y~x, replace=T))
